@@ -1,0 +1,7 @@
+{
+  "name": "password-checker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Password strength checker with breach detection (HIBP k-anonymity) and Gemini-powered advice",
+  "engines": { "node": ">=20" }
+}

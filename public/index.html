@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Password Check: strength, breaches and advice</title>
+<meta name="description" content="Check how strong a password is, whether it has appeared in a data breach, and get tailored advice. Your password never leaves your browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=JetBrains+Mono:wght@500&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E8EDF1;--surface:#F6F8FA;--ink:#14212B;--muted:#586775;--line:#C9D3DB;--weak:#C2362B;--fair:#B7791F;--good:#2F7D5B;--great:#0F6B73;--cell:#D5DDE4;--accent:var(--muted)}
+@media (prefers-color-scheme:dark){:root{--bg:#0C141B;--surface:#16212B;--ink:#E6EDF2;--muted:#93A3B0;--line:#2B3A46;--weak:#FF6B5E;--fair:#E7B04F;--good:#5CCB98;--great:#4FD1D9;--cell:#243340}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 17px/1.55 Figtree,system-ui,sans-serif;min-height:100vh;padding:max(28px,env(safe-area-inset-top)) 20px max(40px,env(safe-area-inset-bottom))}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+main{position:relative;z-index:1;max-width:680px;margin:0 auto}
+.hero{display:flex;align-items:center;gap:18px;margin:20px 0 10px}
+h1{font:800 clamp(2rem,6vw,3.1rem)/1.05 "Bricolage Grotesque",Figtree,sans-serif;letter-spacing:-.02em;margin:0}
+h1 .w{display:inline-block;margin-right:.25em;animation:wordup .7s cubic-bezier(.2,.8,.2,1) both}
+.lede{color:var(--muted);margin:0 0 26px;max-width:52ch}
+.glass{background:color-mix(in srgb,var(--surface) 84%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.field{display:flex;border:2px solid var(--ink);border-radius:10px;overflow:hidden;transition:border-color .3s,box-shadow .3s;box-shadow:0 0 0 0 transparent}
+.field:focus-within{border-color:var(--accent);box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 25%,transparent)}
+.field.bad{animation:shake .5s}
+#pw{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);padding:18px 16px;font:500 1.25rem "JetBrains Mono",monospace}
+#pw:focus{outline:none}
+.field button{border:0;border-left:1px solid var(--line);background:transparent;color:var(--ink);padding:0 16px;font:600 .9rem Figtree,sans-serif;cursor:pointer}
+.field button:hover{background:var(--cell)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.meter{display:grid;grid-template-columns:repeat(20,1fr);gap:4px;margin:18px 0 10px}
+.meter i{height:14px;border-radius:2px;background:var(--cell);transform:scaleY(.6);transition:background .3s,transform .3s}
+.meter i.on{background:var(--accent);transform:scaleY(1)}
+.meter.great i.on{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);background-size:300% 100%;animation:sheen 2.2s linear infinite}
+.verdict{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
+.verdict strong{font:800 1.6rem "Bricolage Grotesque",sans-serif;color:var(--accent);transition:color .3s}
+.verdict span{color:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:26px 0}
+.facts div{padding:14px 16px}
+.facts dt{font-size:.85rem;color:var(--muted)}
+.facts dd{margin:2px 0 0;font:500 1.15rem "JetBrains Mono",monospace;overflow-wrap:anywhere}
+.panel{position:relative;overflow:hidden;border-radius:10px;border:2px solid var(--line);padding:16px 18px;margin-bottom:26px;animation:rise .45s cubic-bezier(.2,.8,.2,1) both}
+.panel h2{margin:0 0 4px;font:800 1.2rem "Bricolage Grotesque",sans-serif}
+.panel p{margin:0;color:var(--muted)}
+.panel[data-s=safe]{border-color:var(--good)}.panel[data-s=safe] h2{color:var(--good)}
+.panel[data-s=hit]{border-color:var(--weak)}.panel[data-s=hit] h2{color:var(--weak)}
+.panel[data-s=error]{border-color:var(--fair)}
+.panel.scan::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,color-mix(in srgb,var(--accent) 28%,transparent) 50%,transparent 70%);background-size:300% 100%;animation:sheen 1.4s linear infinite}
+.panel button{margin-top:10px;font:600 .9rem Figtree;padding:7px 14px;border:1px solid var(--ink);background:transparent;color:var(--ink);border-radius:6px;cursor:pointer}
+.panel button:disabled{opacity:.5;cursor:not-allowed}
+.ai ul{margin:10px 0 0;padding-left:1.2em}
+.ai li{margin:4px 0;animation:rise .45s both}
+.ai .method{margin-top:12px;color:var(--ink);animation:rise .45s .5s both}
+.ai small{display:block;margin-top:10px;color:var(--muted);font-size:.82rem}
+h3{font:800 1.05rem "Bricolage Grotesque",sans-serif;margin:0 0 8px}
+ul.checks{list-style:none;margin:0 0 28px;padding:0}
+.checks li{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);color:var(--muted);transition:color .3s}
+.checks li::before{content:"✕";font-weight:600;color:var(--weak);width:1.2em;flex:none}
+.checks li.ok{color:var(--ink)}
+.checks li.ok::before{content:"✓";color:var(--good);animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:34px}
+.actions button{font:600 1rem Figtree;padding:11px 18px;border-radius:8px;border:2px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;transition:transform .15s}
+.actions button:active{transform:scale(.96)}
+.actions button.alt{background:transparent;color:var(--ink)}
+footer{color:var(--muted);font-size:.9rem;border-top:1px solid var(--line);padding-top:16px}
+.lock{width:72px;height:72px;color:var(--accent);flex:none;overflow:visible;transition:color .3s}
+.lock .sh{transition:transform .6s cubic-bezier(.3,1.5,.5,1);transform-box:fill-box;transform-origin:100% 100%}
+.lock.open .sh{transform:translateY(-9px) rotate(-22deg)}
+.lock.ajar .sh{transform:translateY(-5px) rotate(-10deg)}
+.lock .crack{opacity:0;transition:opacity .3s}
+.lock.cracked .crack{opacity:1}
+.lock.cracked{animation:shake .5s}
+.lock .ring{opacity:0;transform-box:fill-box;transform-origin:center}
+.lock.closed .ring{animation:ring 2.4s ease-out infinite}
+@keyframes wordup{from{opacity:0;transform:translateY(.5em)}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+@keyframes sheen{to{background-position:-300% 0}}
+@keyframes pop{from{transform:scale(0)}}
+@keyframes ring{0%{opacity:.7;transform:scale(.7)}100%{opacity:0;transform:scale(1.25)}}
+@media (max-width:520px){.facts{grid-template-columns:1fr}.meter i{height:11px}.lock{width:52px;height:52px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<div id="root"></div>
+
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useRef, useMemo } = React;
+const h = React.createElement;
+const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- analysis (runs in the browser only) ---------- */
+const COMMON = new Set('password,123456,12345678,123456789,qwerty,abc123,111111,123123,admin,letmein,welcome,monkey,dragon,iloveyou,sunshine,princess,football,baseball,master,login,passw0rd,password1,password123,qwerty123,1q2w3e4r,000000,666666,654321,superman,trustno1,shadow,michael,jesus,ninja,mustang,access,flower,hello,freedom,whatever,qazwsx,zaq12wsx,starwars,batman,test,1234,12345,1234567,1234567890,changeme,secret,pass,default'.split(','));
+const SEQS = ['abcdefghijklmnopqrstuvwxyz', '0123456789', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+function hasSeq(s, n = 4) {
+  const l = s.toLowerCase();
+  for (const q of SEQS) { const r = [...q].reverse().join(''); for (let i = 0; i + n <= l.length; i++) { const p = l.slice(i, i + n); if (q.includes(p) || r.includes(p)) return true; } }
+  return false;
+}
+function analyze(s) {
+  const lower = /[a-z]/.test(s), upper = /[A-Z]/.test(s), digit = /\d/.test(s), sym = /[^A-Za-z0-9\s]/.test(s), oth = /[^\x00-\x7F]/.test(s);
+  const pool = (lower ? 26 : 0) + (upper ? 26 : 0) + (digit ? 10 : 0) + (sym ? 33 : 0) + (oth ? 100 : 0) || 1;
+  let eff = s.length - (s.match(/(.)\1+/g) || []).reduce((a, m) => a + m.length - 1, 0) * 0.7;
+  const common = COMMON.has(s.toLowerCase()) || COMMON.has(s.toLowerCase().replace(/[\d!@#$%^&*]+$/, ''));
+  const seq = hasSeq(s), rep = /(.)\1{2,}/.test(s);
+  if (seq) eff *= 0.7;
+  let bits = Math.max(0, eff) * Math.log2(pool);
+  if (common) bits = Math.min(bits, 10);
+  return { bits, lower, upper, digit, symbol: sym || oth, common, seq, rep, len: s.length };
+}
+function fmtTime(bits) {
+  const sec = Math.pow(2, bits) / 2 / 1e10; // offline attack, 10 billion guesses/second
+  if (sec < 1) return 'instantly';
+  if (sec > 31557600e9) return 'billions of years+';
+  for (const [n, v] of [['year', 31557600], ['month', 2629800], ['day', 86400], ['hour', 3600], ['minute', 60], ['second', 1]]) if (sec >= v) {
+    const x = Math.floor(sec / v);
+    if (n === 'year' && x >= 1e6) return (x / 1e6).toFixed(0) + ' million years';
+    if (n === 'year' && x >= 1e3) return x.toLocaleString() + ' years';
+    return x + ' ' + n + (x > 1 ? 's' : '');
+  }
+}
+const LV = [{ max: 28, n: 'Very weak', t: 'weak' }, { max: 36, n: 'Weak', t: 'weak' }, { max: 60, n: 'Fair', t: 'fair' }, { max: 80, n: 'Strong', t: 'good' }, { max: Infinity, n: 'Excellent', t: 'great' }];
+const levelOf = b => LV.find(l => b < l.max);
+async function sha1(s) {
+  const b = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+/* ---------- animated background: drifting nodes, tinted by strength ---------- */
+function Bg({ tone, hot }) {
+  const st = useRef({ tone, hot }); st.current = { tone, hot };
+  useEffect(() => {
+    const cv = document.getElementById('bg'), c = cv.getContext('2d');
+    let w, H, P = [], raf, mx = -999, my = -999, cur = [120, 140, 160];
+    const hex = v => { v = (v || '#788898').trim().replace('#', ''); return [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16)); };
+    const size = () => {
+      const d = devicePixelRatio || 1; w = innerWidth; H = innerHeight;
+      cv.width = w * d; cv.height = H * d; c.setTransform(d, 0, 0, d, 0, 0);
+      P = Array.from({ length: Math.min(85, Math.round(w * H / 16000)) }, () => ({ x: Math.random() * w, y: Math.random() * H, vx: (Math.random() - .5) * .45, vy: (Math.random() - .5) * .45, r: 1 + Math.random() * 1.8 }));
+    };
+    const frame = () => {
+      const { tone, hot } = st.current;
+      const tg = hex(getComputedStyle(document.documentElement).getPropertyValue('--' + tone));
+      cur = cur.map((v, i) => v + (tg[i] - v) * .06);
+      const col = cur.map(Math.round).join(',');
+      const sp = hot ? 2.8 : 1;
+      c.clearRect(0, 0, w, H);
+      for (const p of P) {
+        p.x += p.vx * sp + (hot ? (Math.random() - .5) * 1.4 : 0); p.y += p.vy * sp + (hot ? (Math.random() - .5) * 1.4 : 0);
+        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0; if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        const dx = p.x - mx, dy = p.y - my, d = Math.hypot(dx, dy);
+        if (d < 120) { p.x += dx / d * 1.6; p.y += dy / d * 1.6; }
+      }
+      for (let i = 0; i < P.length; i++) {
+        const a = P[i];
+        c.fillStyle = `rgba(${col},.75)`; c.beginPath(); c.arc(a.x, a.y, a.r, 0, 6.283); c.fill();
+        for (let j = i + 1; j < P.length; j++) {
+          const b = P[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (d < 140) { c.strokeStyle = `rgba(${col},${(1 - d / 140) * .35})`; c.lineWidth = 1; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); }
+        }
+      }
+      if (!REDUCE) raf = requestAnimationFrame(frame);
+    };
+    const move = e => { mx = e.clientX; my = e.clientY; };
+    size(); frame();
+    addEventListener('resize', size); addEventListener('pointermove', move);
+    return () => { cancelAnimationFrame(raf); removeEventListener('resize', size); removeEventListener('pointermove', move); };
+  }, []);
+  return null;
+}
+
+/* ---------- animated lock: opens, closes, cracks with the result ---------- */
+function Lock({ st }) {
+  return h('svg', { className: 'lock ' + st, viewBox: '0 0 64 64', 'aria-hidden': true },
+    h('circle', { className: 'ring', cx: 32, cy: 40, r: 30, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }),
+    h('path', { className: 'sh', d: 'M20 30V22a12 12 0 0 1 24 0v8', fill: 'none', stroke: 'currentColor', strokeWidth: 5, strokeLinecap: 'round' }),
+    h('rect', { x: 12, y: 30, width: 40, height: 28, rx: 6, fill: 'currentColor' }),
+    h('circle', { cx: 32, cy: 42, r: 4, fill: 'var(--bg)' }),
+    h('rect', { x: 30.5, y: 44, width: 3, height: 8, fill: 'var(--bg)' }),
+    h('path', { className: 'crack', d: 'M36 31l-5 9 6 3-5 12', fill: 'none', stroke: 'var(--bg)', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' }));
+}
+
+/* ---------- small hooks/components ---------- */
+function Count({ to, suffix = '' }) {
+  const [v, setV] = useState(to), from = useRef(to);
+  useEffect(() => {
+    const a = from.current, t0 = performance.now(); let r;
+    const step = t => { const k = REDUCE ? 1 : Math.min(1, (t - t0) / 450), x = Math.round(a + (to - a) * (1 - Math.pow(1 - k, 3))); from.current = x; setV(x); if (k < 1) r = requestAnimationFrame(step); };
+    r = requestAnimationFrame(step); return () => cancelAnimationFrame(r);
+  }, [to]);
+  return v + suffix;
+}
+function useTyper(on) {
+  const L = ['Type a password to test', 'Try the one you use everywhere', 'It never leaves your browser'];
+  const [t, setT] = useState('Type a password');
+  useEffect(() => {
+    if (!on || REDUCE) return;
+    let i = 0, j = 0, del = false, id;
+    const tick = () => {
+      const s = L[i]; j += del ? -1 : 1; setT(s.slice(0, j) || '\u00a0');
+      let d = del ? 22 : 55;
+      if (!del && j === s.length) { del = true; d = 1500; } else if (del && j === 0) { del = false; i = (i + 1) % L.length; d = 300; }
+      id = setTimeout(tick, d);
+    };
+    tick(); return () => clearTimeout(id);
+  }, [on]);
+  return t;
+}
+
+/* ---------- app ---------- */
+function App() {
+  const [pw, setPw] = useState(''), [show, setShow] = useState(false);
+  const [bc, setBc] = useState(null), [bs, setBs] = useState({ s: 'idle' }), [retry, setRetry] = useState(0);
+  const [ai, setAi] = useState({ s: 'idle' }), [aiOn, setAiOn] = useState(false), [copied, setCopied] = useState(false);
+  const ph = useTyper(!pw);
+  const a = useMemo(() => pw ? analyze(pw) : null, [pw]);
+
+  useEffect(() => { fetch('/api/health').then(r => r.json()).then(x => setAiOn(!!x.ai)).catch(() => {}); }, []);
+
+  useEffect(() => { // breach check through our backend, debounced
+    setBc(null); setAi({ s: 'idle' });
+    if (!pw) { setBs({ s: 'idle' }); return; }
+    if (!window.crypto?.subtle) { setBs({ s: 'error', msg: 'Your browser needs a secure (HTTPS) connection to run this check.' }); return; }
+    setBs({ s: 'checking' });
+    const ctl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const hash = await sha1(pw), res = await fetch('/api/breach?prefix=' + hash.slice(0, 5), { signal: ctl.signal });
+        if (res.status === 429) throw new Error('rate');
+        if (!res.ok) throw new Error(res.status);
+        let n = 0;
+        for (const line of (await res.text()).split('\n')) { const [x, c] = line.trim().split(':'); if (x === hash.slice(5)) { n = parseInt(c, 10) || 0; break; } }
+        setBc(n); setBs({ s: n > 0 ? 'hit' : 'safe', n });
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        setBs({ s: 'error', msg: e.message === 'rate' ? 'Too many checks in a short time. Wait a moment and try again.' : 'The lookup did not respond. Check your connection.' });
+      }
+    }, 500);
+    return () => { clearTimeout(t); ctl.abort(); };
+  }, [pw, retry]);
+
+  const breached = bc > 0, lvl = a && levelOf(a.bits);
+  const tone = !a ? 'muted' : breached ? 'weak' : lvl.t;
+  const name = !a ? 'Waiting for input' : breached ? 'Compromised' : lvl.n;
+  const lock = !a ? 'open' : breached ? 'cracked' : (tone === 'good' || tone === 'great') ? 'closed' : 'ajar';
+  const filled = !a ? 0 : breached ? 1 : Math.max(1, Math.min(20, Math.round(a.bits / 100 * 20)));
+
+  const askAi = async () => {
+    setAi({ s: 'loading' });
+    try {
+      const r = await fetch('/api/advice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ length: a.len, bits: a.bits, level: name, lower: a.lower, upper: a.upper, digit: a.digit, symbol: a.symbol, common: a.common, sequence: a.seq, repeat: a.rep, breachCount: bc }) });
+      const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Request failed');
+      setAi({ s: 'done', d });
+    } catch (e) { setAi({ s: 'error', msg: e.message || 'Advice is unavailable right now.' }); }
+  };
+  const gen = () => {
+    const set = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_+=?', lim = 256 - 256 % set.length; let o = '';
+    while (o.length < 20) for (const b of crypto.getRandomValues(new Uint8Array(32))) if (b < lim && o.length < 20) o += set[b % set.length];
+    setPw(o); setShow(true);
+  };
+  const copy = async () => { if (!pw) return; try { await navigator.clipboard.writeText(pw); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} };
+
+  const B = { idle: ['Breach check', 'Enter a password and we will look it up in the Have I Been Pwned database.', 'idle'], checking: ['Checking…', 'Looking for this password in known breaches.', 'idle'],
+    safe: ['Not found in known breaches', 'This password was not in the database. That does not guarantee it is strong, so check the strength rating too.', 'safe'],
+    hit: ['Found in data breaches', `This password has appeared ${(bs.n || 0).toLocaleString()} times in leaked databases. Do not use it anywhere.`, 'hit'],
+    error: ['Could not run the breach check', bs.msg, 'error'] }[bs.s];
+  const checks = [['At least 12 characters', a && a.len >= 12], ['Mix of upper and lower case letters', a && a.lower && a.upper], ['Contains numbers', a && a.digit], ['Contains symbols', a && a.symbol],
+    ['Not a commonly used password', a && !a.common], ['No repeated runs like "aaa"', a && !a.rep], ['No sequences like "abcd" or "1234"', a && !a.seq]];
+
+  return h('div', { style: { '--accent': `var(--${tone})` } },
+    h(Bg, { tone, hot: breached }),
+    h('main', null,
+      h('header', { className: 'hero' }, h(Lock, { st: lock }),
+        h('h1', null, 'Is your password safe?'.split(' ').map((w, i) => h('span', { className: 'w', key: i, style: { animationDelay: i * 90 + 'ms' } }, w)))),
+      h('p', { className: 'lede' }, 'Type a password to see how long it would take to crack and whether it has leaked in a known data breach.'),
+      h('label', { className: 'sr', htmlFor: 'pw' }, 'Password to check'),
+      h('div', { className: 'field glass' + (breached ? ' bad' : '') },
+        h('input', { id: 'pw', type: show ? 'text' : 'password', value: pw, onChange: e => setPw(e.target.value), autoComplete: 'off', autoCapitalize: 'off', spellCheck: false, placeholder: ph }),
+        h('button', { type: 'button', 'aria-pressed': show, onClick: () => setShow(!show) }, show ? 'Hide' : 'Show')),
+      h('div', { className: 'meter' + (tone === 'great' && !breached ? ' great' : ''), 'aria-hidden': true },
+        Array.from({ length: 20 }, (_, i) => h('i', { key: i, className: i < filled ? 'on' : '', style: { transitionDelay: i * 20 + 'ms' } }))),
+      h('div', { className: 'verdict', 'aria-live': 'polite' }, h('strong', null, name), h('span', null, a && a.common ? 'This is one of the most common passwords.' : '')),
+      h('dl', { className: 'facts' },
+        h('div', { className: 'glass' }, h('dt', null, 'Length'), h('dd', null, h(Count, { to: a ? a.len : 0 }))),
+        h('div', { className: 'glass' }, h('dt', null, 'Entropy'), h('dd', null, h(Count, { to: a ? Math.round(a.bits) : 0, suffix: ' bits' }))),
+        h('div', { className: 'glass' }, h('dt', null, 'Time to crack'), h('dd', null, a ? fmtTime(a.bits) : 'n/a'))),
+      h('section', { key: bs.s, className: 'panel glass' + (bs.s === 'checking' ? ' scan' : ''), 'data-s': B[2], 'aria-live': 'polite' },
+        h('h2', null, B[0]), h('p', null, B[1]),
+        bs.s === 'error' && bs.msg && !bs.msg.includes('HTTPS') && h('button', { onClick: () => setRetry(retry + 1) }, 'Try again')),
+      aiOn && h('section', { className: 'panel glass ai', 'aria-live': 'polite' },
+        h('h2', null, ai.s === 'done' ? ai.d.headline || 'Advice' : 'Personal advice'),
+        h('p', null, ai.s === 'loading' ? 'Getting advice…' : ai.s === 'done' ? ai.d.assessment : ai.s === 'error' ? ai.msg : 'Get tips tailored to this password.'),
+        ai.s === 'done' && ai.d.tips?.length > 0 && h('ul', null, ai.d.tips.map((t, i) => h('li', { key: i, style: { animationDelay: i * 120 + 'ms' } }, t))),
+        ai.s === 'done' && ai.d.passphrase_method && h('p', { className: 'method' }, ai.d.passphrase_method),
+        h('button', { type: 'button', disabled: !pw || ai.s === 'loading', onClick: askAi }, 'Get advice'),
+        h('small', null, 'Only anonymous statistics (length, character types, rating) are used. Your password is never sent.')),
+      h('h3', null, 'What would make it stronger'),
+      h('ul', { className: 'checks' }, checks.map(([t, ok]) => h('li', { key: t, className: ok ? 'ok' : '' }, t))),
+      h('div', { className: 'actions' },
+        h('button', { type: 'button', onClick: gen }, 'Generate a strong password'),
+        h('button', { type: 'button', className: 'alt', onClick: copy }, copied ? 'Copied' : 'Copy password')),
+      h('footer', null, 'Your password is analysed in your browser and is never sent to our server or to any AI. For the breach check, your browser hashes it (SHA-1) and sends only the first 5 characters of the hash to our server, which asks Have I Been Pwned for matching hashes. The final comparison happens on your device (k-anonymity).')));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
